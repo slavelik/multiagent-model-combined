@@ -96,18 +96,40 @@ def generate_synthetic_person_params(
     # weekend_relax_factor: линейно зависит от socialness и occupation + family size
     df['weekend_relax_factor'] = (0.5 + df['socialness'] * 1.2 + (df['occupation'] == 'retired') * 0.3 - (df['family_size']-1) * 0.05 + rng.normal(0, 0.1, n_agents)).clip(0.8, 2.5)
 
-    # healthy: зависит от возраста и socialness
-    base_health_prob = (0.8 - (df['age'] - 24) / 100   # со старением вероятность падает
-        + df['socialness'] * 0.2   # больше socialness — выше шанс здоровья
-        - np.where(df['T_out'] < 0, 0.1, 0.0)  # холод повышает риск
+    
+    sport_loc = (
+        0.5                                       # базовый уровень
+        - (df['age'] - 24) / 150                  # с возрастом чуть меньше активности
+        + np.where(df['T_out'] > 20, 0.1, -0.1)   # жаркая погода — выше активность, холод — ниже
+        + df['socialness'] * 0.2                  # социальность подстегивает спорт
+    )
+    df['sport_activity'] = np.clip(
+        rng.normal(loc=sport_loc, scale=0.2, size=n_agents),
+        0, 1
+    )
+
+    # healthy: теперь зависит от возраста, socialness и sport_activity, с шумом
+    base_health_prob = (
+        0.8
+        - (df['age'] - 24) / 120
+        + df['socialness'] * 0.1
+        + df['sport_activity'] * 0.4
+        - np.where(df['T_out'] < 0, 0.1, 0.0)
     ).clip(0.05, 0.95)
     df['healthy'] = rng.binomial(1, base_health_prob)
+
+    # # healthy: зависит от возраста и socialness
+    # base_health_prob = (0.8 - (df['age'] - 24) / 100   # со старением вероятность падает
+    #     + df['socialness'] * 0.2   # больше socialness — выше шанс здоровья
+    #     - np.where(df['T_out'] < 0, 0.1, 0.0)  # холод повышает риск
+    # ).clip(0.05, 0.95)
+    # df['healthy'] = rng.binomial(1, base_health_prob)
 
     # hospitalized: если не здоров — выше риск, плюс старше 55 ещё выше
     hosp_prob = (0.01 + (1 - df['healthy']) * 0.4 + (df['age'] > 55) * 0.1).clip(0, 1)
     df['hospitalized'] = rng.binomial(1, hosp_prob)
 
-    df['sport_activity'] = np.clip(rng.normal(loc = df['healthy'] * 0.6 + 0.3 - (df['age'] - 24) / 150 + np.where(df['T_out'] > 20, 0.1, -0.1), scale = 0.1, size = n_agents), 0, 1)
+    # df['sport_activity'] = np.clip(rng.normal(loc = df['healthy'] * 0.6 + 0.3 - (df['age'] - 24) / 150 + np.where(df['T_out'] > 20, 0.1, -0.1), scale = 0.1, size = n_agents), 0, 1)
     # weekend_outdoor_time: зависит от socialness и weekend_relax
     df['weekend_outdoor_time'] = np.clip(rng.normal(df['socialness'] * 2 + df['weekend_relax_factor'], 0.5), 0, 6)
 

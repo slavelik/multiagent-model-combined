@@ -12,29 +12,14 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 data = pd.read_csv("synthetic_person_features.csv")
 
 target_col = 'healthy'
-feature_cols = ["age", "socialness", "occupation", "T_out", "region", "sport_activity", "sin_month", "cos_month"]
+feature_cols = ["age", "socialness", "occupation", "T_out", "region", "sport_activity"]
 X = data[feature_cols]
 y_raw = data[target_col]
-
-# feature_sets = {
-#   "has_kids":             ["age","family_size","region","income_level"],
-#   "weekend_relax_factor": ["socialness","occupation","family_size"],
-#   "movie_enthusiasm":     ["socialness","tv_time","evening_activity_duration"],
-#   "socialness":           ['age', 'sport_activity', 'weekend_outdoor_time'],
-#   "occupation":           ["age","income_level","region","socialness"],
-#   "healthy":              ["age","socialness","occupation","T_out","sin_month","cos_month"],
-#   "hospitalized":         ["healthy","age","T_out","sin_month","cos_month"]
-# }
 
 target_le = LabelEncoder()
 y = target_le.fit_transform(y_raw)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-
-class_counts = pd.Series(y_train).value_counts().to_dict()
-max_count = max(class_counts.values())
-class_weights = {cls: max_count/count for cls, count in class_counts.items()}
-sample_weights = [class_weights[label] for label in y_train]
 
 num_cols = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
 cat_cols = [c for c in feature_cols if c not in num_cols]
@@ -49,7 +34,7 @@ pipeline = make_pipeline(
     xgb.XGBClassifier(random_state=42, enable_categorical=False)
 )
 
-pipeline.fit(X_train, y_train, xgbclassifier__sample_weight=sample_weights)
+pipeline.fit(X_train, y_train)
 
 y_train_pred = pipeline.predict(X_train)
 y_test_pred = pipeline.predict(X_test)
@@ -74,9 +59,9 @@ else:
     metrics_df.to_csv(metrics_csv, index=False)
 print(metrics_df)
 
-with open('trained_models/occupation/healthy_pipeline.pkl', 'wb+') as f:
+with open('trained_models/healthy/healthy_pipeline.pkl', 'wb+') as f:
     pickle.dump(pipeline, f)
-with open('trained_models/occupation/healthy_encoder.pkl', 'wb+') as f:
+with open('trained_models/healthy/healthy_encoder.pkl', 'wb+') as f:
     pickle.dump(target_le, f)
 
 model = pipeline.named_steps['xgbclassifier']

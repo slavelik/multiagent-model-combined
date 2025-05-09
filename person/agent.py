@@ -30,7 +30,7 @@ class PersonAgent(Agent):
         "socialness":           ['age', 'sport_activity', 'weekend_outdoor_time'],
         "occupation":           ['age','income_level','region','socialness', 'family_size', 'has_kids', 'commute_duration'],
         "family_size":          ["age","region","income_level","socialness"],
-        "healthy":              ["age","socialness","occupation","T_out","sin_month","cos_month"],
+        "healthy":              ["age", "socialness", "occupation", "T_out", "region", "sport_activity"],
         "hospitalized":         ["healthy","age","T_out","sin_month","cos_month"]
     }
 
@@ -51,7 +51,8 @@ class PersonAgent(Agent):
             PersonAgent.models["movie_enthusiasm"]     = pickle.load(open(os.path.join(tm, "movie_enthusiasm","Ridge.pkl"), "rb"))
             PersonAgent.models["socialness"]           = pickle.load(open(os.path.join(tm, "socialness","GradientBoosting.pkl"), "rb"))
             PersonAgent.models["weekend_relax_factor"] = pickle.load(open(os.path.join(tm, "weekend_relax_factor","CatBoost.pkl"), "rb"))
-            PersonAgent.models["healthy"]              = pickle.load(open(os.path.join(tm, "healthy","GradientBoosting.pkl"), "rb"))
+            PersonAgent.models["healthy_pipeline"]  = pickle.load(open(os.path.join(tm, "healthy","healthy_pipeline.pkl"), "rb"))
+            PersonAgent.models["healthy_encoder"]   = pickle.load(open(os.path.join(tm, "healthy","healthy_encoder.pkl"), "rb"))
             PersonAgent._models_loaded = True
 
         self.models = PersonAgent.models
@@ -65,7 +66,6 @@ class PersonAgent(Agent):
         self.movie_enthusiasm = None
         self.socialness = None
         self.weekend_relax_factor = None
-        self.visited_office = False
         
         # Мощности приборов (Вт)
         self.P_LAPTOP    = self.random.randint(60, 100)         # ноутбук
@@ -98,7 +98,6 @@ class PersonAgent(Agent):
         self.consumption_coef = self.model.economic_coeff
 
     def build_schedule(self):
-        self.visited_office = False
         events = []
         base_wake = int(self.random.normalvariate(8*60, 120)) 
         if self.model.is_holiday:
@@ -265,9 +264,7 @@ class PersonAgent(Agent):
         
         label = self.hourly_label[hour]
         if label == "office work":
-            if not self.visited_office:
-                self.model.num_at_office += 1
-                self.visited_office = True
+            self.model.num_at_office += 1
         elif label not in {
             "hospital_rest", "social outing", "afternoon walk",
             "idle before shift", "gym workout",

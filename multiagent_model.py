@@ -182,12 +182,12 @@ class MultiAgentModel(Model):
         if current_date != self._last_date:
             self.num_hospitalized = 0
             self.num_unhealthy    = 0
-            self.num_at_office    = 0
             self._last_date       = current_date
         
         # Чтобы обновлять каждый час
         self.num_home = 0
         self.hourly_at_home = 0
+        self.num_at_office = 0
         
         # Обновляем год и корректирующий коэффициент, если год изменился
         current_year = self.current_datetime.year
@@ -213,9 +213,6 @@ class MultiAgentModel(Model):
         self.hourly_avg_home = self.hourly_at_home / self.num_home
         self.total_consumption = sum(a.consumption for a in self.population) + sum(a.consumption for a in self.agents_buildings)
         self.datacollector.collect(self)
-        print(f"num_at_office={self.num_at_office}")
-        # print(f"num_at_office={self.num_office} | num_home={self.num_home} | hourly_at_home={self.hourly_at_home} | hourly_avg={self.hourly_avg_home}")
-        # print(f"num_hospitalized={self.num_hospitalized} | num_unhealthy={self.num_unhealthy} | num_office={self.num_office} | num_home={self.num_home}")
 
     def batch_predict_seniors(self):
         if not self.by_type.get('senior') or len(self.by_type['senior']) == 0:
@@ -302,14 +299,14 @@ class MultiAgentModel(Model):
 
         results = {}
         for param, md in PersonAgent.models.items():
-            if param in ["occupation_pipeline", "occupation_encoder"]:
+            if param in ["occupation_pipeline", "occupation_encoder", "healthy_pipeline", "healthy_encoder"]:
                 continue
             feats = PersonAgent.FEATURES[param]
             for f in feats:
                 if f not in dem:
                     dem[f] = 0
             Xp = dem[feats]
-            if param in {'occupation', 'has_kids', 'healthy', 'hospitalized'}:
+            if param in {'has_kids', 'hospitalized'}:
                 results[param] = md.predict(Xp)
             else:
                 results[param] = md.predict(Xp)
@@ -320,12 +317,20 @@ class MultiAgentModel(Model):
         occ_pred_raw = occ_pipe.predict(df0[occ_feats])
         results["occupation"] = occ_le.inverse_transform(occ_pred_raw)
 
+        df_hl = df0.copy()
+        df_hl["T_out"] = self.current_T_out
+        healthy_pipe = PersonAgent.models["healthy_pipeline"]
+        healthy_le = PersonAgent.models["healthy_encoder"]
+        hl_feats = PersonAgent.FEATURES["healthy"]
+        hl_pred_raw = healthy_pipe.predict(df_hl[hl_feats])
+        results["healthy"] = healthy_le.inverse_transform(hl_pred_raw)
+
         for agent in self.by_type['person']:
             aid = agent.agent_id
             # классификация
             agent.occupation          = results['occupation'][aid]
             agent.has_kids            = bool(results['has_kids'][aid])
-            agent.healthy             = bool(results['healthy'][aid])
+            agent.healthy             = results['healthy'][aid]
             agent.hospitalized        = bool(results['hospitalized'][aid])
             # шум
             agent.movie_enthusiasm     = float(np.clip(results['movie_enthusiasm'][aid]

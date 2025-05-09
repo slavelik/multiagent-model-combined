@@ -27,16 +27,16 @@ global_features_file       = r"data\environment_data.csv"
 num_days   = 180
 start_date = pd.Timestamp("2021-01-01")
 
-n_persons            = 100
-n_students           = 100
-n_seniors            = 100
-n_evs                = 1
-n_enterprises        = 1
-n_offices            = 1
-n_hospitals          = 1
-n_malls              = 1
-n_modern_residential = 1
-n_residential        = 1
+n_persons            = 60
+n_students           = 60
+n_seniors            = 60
+n_evs                = 0
+n_enterprises        = 0
+n_offices            = 0
+n_hospitals          = 0
+n_malls              = 0
+n_modern_residential = 0
+n_residential        = 0
 
 model = MultiAgentModel(
     n_persons=n_persons,

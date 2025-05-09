@@ -25,7 +25,7 @@ class OfficeBuildingAgent(Agent):
         hour = dt.hour
 
         # 2) Определяем ppl
-        ppl = self.model.num_at_office / self.model.num_office_agents
+        ppl = self.model.num_office / self.model.num_office_agents
         # 3) Отопительный сезон: 15 октября–15 апреля
         m, d = dt.month, dt.day
         heating_active = ((m == 10 and d >= 15) or (m > 10) or (m < 4) or (m == 4 and d <= 15))

@@ -90,27 +90,19 @@ feature_sets = {
   "weekend_relax_factor": ["socialness","occupation","family_size"],
   "movie_enthusiasm":     ["socialness","tv_time","evening_activity_duration"],
   "socialness":           ['age', 'sport_activity', 'weekend_outdoor_time'],
-  "occupation":           ["age","income_level","region","socialness"],
-  "healthy":              ["age","socialness","occupation","T_out","sin_month","cos_month"],
   "hospitalized":         ["healthy","age","T_out","sin_month","cos_month"]
 }
 
 targets = {
-  "occupation":"classification",
   "has_kids":"classification",
   "movie_enthusiasm":"regression",
   "weekend_relax_factor":"regression",
-  "healthy":"classification",
   "hospitalized":"classification",
   "socialness": "regression"
 }
 
 output_dir = r"trained_models"
 os.makedirs(output_dir, exist_ok=True)
-
-occ_le = LabelEncoder()
-occ_le.fit(df["occupation"])
-pickle.dump(occ_le, open(os.path.join(output_dir, "occupation", "encoder.pkl"), "wb"))
 
 for target, task in targets.items():
     df_work = df.copy()
@@ -121,8 +113,6 @@ for target, task in targets.items():
             le_feat = LabelEncoder()
             df_work[feat] = le_feat.fit_transform(df_work[feat])
 
-    if target == "occupation":
-        df_work["occupation"] = occ_le.transform(df["occupation"])
     if task == 'classification':
         df_work[target] = LabelEncoder().fit_transform(df_work[target])
 
