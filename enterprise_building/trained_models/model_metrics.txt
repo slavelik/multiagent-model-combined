@@ -1,0 +1,3 @@
+LinearRegression: RMSE=6.059, R2=0.911
+RandomForest: RMSE=7.086, R2=0.879
+GradientBoosting: RMSE=6.035, R2=0.912
