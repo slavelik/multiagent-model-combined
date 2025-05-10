@@ -3,15 +3,22 @@ import pandas as pd
 from multiagent_model import MultiAgentModel
 import time
 import cProfile, pstats
+from agent_data_generators import (
+    generate_senior_test_features,
+    generate_student_test_features,
+    generate_person_test_features,
+    generate_ev_test_features
+)
+
 
 
 
 start = time.time()
 
-student_feature_file       = r"person\student\ML\student_test_features.csv"
-senior_feature_file        = r"person\senior\ML\senior_test_features.csv"
-person_feature_file        = r"person\ML\person_test_features.csv"
-evs_feature_file           = r"transport\ev\ML\ev_test_features.csv"
+# student_feature_file       = r"person\student\ML\student_test_features.csv"
+# senior_feature_file        = r"person\senior\ML\senior_test_features.csv"
+# person_feature_file        = r"person\ML\person_test_features.csv"
+# evs_feature_file           = r"transport\ev\ML\ev_test_features.csv"
 correction_factors_file    = r"economy\correction_factors.pkl"
 global_features_file       = r"data\environment_data.csv"
 
@@ -51,6 +58,12 @@ n_malls              = 1
 n_modern_residential = 26
 n_residential        = 63
 
+senior_df = generate_senior_test_features(num_days, n_seniors)
+student_df = generate_student_test_features(num_days, n_students)
+person_df = generate_person_test_features(num_days, n_persons)
+ev_df = generate_ev_test_features(num_days, n_evs)
+
+
 model = MultiAgentModel(
     n_persons=n_persons,
     n_students=n_students,
@@ -64,10 +77,10 @@ model = MultiAgentModel(
     n_modern_residential=n_modern_residential,
     n_residential=n_residential,
     global_features_file=global_features_file,
-    senior_test_file=senior_feature_file,
-    student_test_file=student_feature_file,
-    person_test_file=person_feature_file,
-    evs_test_file=evs_feature_file,
+    senior_test_file=senior_df,
+    student_test_file=student_df,
+    person_test_file=person_df,
+    evs_test_file=ev_df,
     correction_factors_file=correction_factors_file,
     seed=42
 )

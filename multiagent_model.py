@@ -42,10 +42,10 @@ class MultiAgentModel(Model):
         n_modern_residential: int,
         n_residential: int,
         n_days: int,
-        senior_test_file: str,
-        student_test_file: str,
-        person_test_file: str,
-        evs_test_file: str,
+        senior_test_feat: str,
+        student_test_feat: str,
+        person_test_feat: str,
+        evs_test_feat: str,
         correction_factors_file: str,
         global_features_file: int,
         seed=None,
@@ -58,40 +58,41 @@ class MultiAgentModel(Model):
         self.feature_len = len(self.feature_df)
         self.step_count = 0
 
-        # 2) генерация фич для каждого типа агентов
-        generate_senior_test_features(
-            n_days=n_days,
-            hours_per_day=hours_per_day,
-            num_seniors=n_seniors,
-            seed=seed or 42,
-            output_path=senior_test_file
-        )
-        generate_student_test_features(
-            n_days=n_days,
-            hours_per_day=hours_per_day,
-            num_students=n_students,
-            seed=seed or 42,
-            output_path=student_test_file
-        )
-        generate_person_features(
-            n_days=n_days,
-            hours_per_day=hours_per_day,
-            num_persons=n_persons,
-            seed=seed or 42,
-            output_path=person_test_file
-        )
-        generate_ev_test_features(
-            n_days=n_days,
-            hours_per_day=hours_per_day,
-            num_evs=n_evs,
-            seed=seed or 42,
-            output_path=evs_test_file
-        )
+        # # 2) генерация фич для каждого типа агентов
+        # generate_senior_test_features(
+        #     n_days=n_days,
+        #     hours_per_day=hours_per_day,
+        #     num_seniors=n_seniors,
+        #     seed=seed or 42,
+        #     output_path=senior_test_file
+        # )
+        # generate_student_test_features(
+        #     n_days=n_days,
+        #     hours_per_day=hours_per_day,
+        #     num_students=n_students,
+        #     seed=seed or 42,
+        #     output_path=student_test_file
+        # )
+        # generate_person_features(
+        #     n_days=n_days,
+        #     hours_per_day=hours_per_day,
+        #     num_persons=n_persons,
+        #     seed=seed or 42,
+        #     output_path=person_test_file
+        # )
+        # generate_ev_test_features(
+        #     n_days=n_days,
+        #     hours_per_day=hours_per_day,
+        #     num_evs=n_evs,
+        #     seed=seed or 42,
+        #     output_path=evs_test_file
+        # )
 
-        self.senior_test_features = pd.read_csv(senior_test_file, parse_dates=["datetime"])
-        self.student_test_features = pd.read_csv(student_test_file, parse_dates=["datetime"])
-        self.person_test_features = pd.read_csv(person_test_file, parse_dates=["datetime"])
-        self.ev_test_features = pd.read_csv(evs_test_file, parse_dates=["datetime"])
+        self.senior_test_features = senior_test_feat
+        self.student_test_features = student_test_feat
+        self.person_test_features = person_test_feat
+        self.ev_test_features = evs_test_feat
+
 
         # 3) инициируем глобальные
         print("Инициализация глобальных переменных.")
