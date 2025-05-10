@@ -27,7 +27,7 @@ class PersonAgent(Agent):
         "has_kids":             ["age","family_size","region","income_level"],
         "weekend_relax_factor": ["socialness","occupation","family_size"],
         "movie_enthusiasm":     ["socialness","tv_time","evening_activity_duration"],
-        "socialness":           ['age', 'sport_activity', 'weekend_outdoor_time'],
+        "socialness":           ["age", "sport_activity", "weekend_outdoor_time", "region", "has_kids"],
         "occupation":           ['age','income_level','region','socialness', 'family_size', 'has_kids', 'commute_duration'],
         "family_size":          ["age","region","income_level","socialness"],
         "healthy":              ["age", "socialness", "occupation", "T_out", "region", "sport_activity"],
@@ -49,7 +49,8 @@ class PersonAgent(Agent):
             PersonAgent.models["hospitalized"]         = pickle.load(open(os.path.join(tm, "hospitalized","XGBoost.pkl"), "rb"))
             PersonAgent.models["has_kids"]             = pickle.load(open(os.path.join(tm, "has_kids","RandomForest.pkl"), "rb"))
             PersonAgent.models["movie_enthusiasm"]     = pickle.load(open(os.path.join(tm, "movie_enthusiasm","Ridge.pkl"), "rb"))
-            PersonAgent.models["socialness"]           = pickle.load(open(os.path.join(tm, "socialness","GradientBoosting.pkl"), "rb"))
+            PersonAgent.models["socialness_pipeline"]           = pickle.load(open(os.path.join(tm, "socialness","socialness_pipeline.pkl"), "rb"))
+            PersonAgent.models["socialness_encoder"]           = pickle.load(open(os.path.join(tm, "socialness","socialness_encoder.pkl"), "rb"))
             PersonAgent.models["weekend_relax_factor"] = pickle.load(open(os.path.join(tm, "weekend_relax_factor","CatBoost.pkl"), "rb"))
             PersonAgent.models["healthy_pipeline"]  = pickle.load(open(os.path.join(tm, "healthy","healthy_pipeline.pkl"), "rb"))
             PersonAgent.models["healthy_encoder"]   = pickle.load(open(os.path.join(tm, "healthy","healthy_encoder.pkl"), "rb"))

@@ -13,6 +13,7 @@ class OfficeBuildingAgent(Agent):
 
         # Базовые удельные плотности (W/m²)
         self.heating_pump_density   = 0.05   # циркуляционный насос отопления
+        self.heating_thermal_density = 22.8
         self.vent_fan_density       = 1.0    # вентиляционные вентиляторы 
         self.lighting_day_density   = 10.0   # офисное освещение днём 
         self.lighting_night_density = 1.0  # аварийное/безопасное освещение ночью
@@ -25,7 +26,8 @@ class OfficeBuildingAgent(Agent):
         hour = dt.hour
 
         # 2) Определяем ppl
-        ppl = self.model.num_office / self.model.num_office_agents
+        ppl = int(self.model.num_at_office / self.model.num_office_agents)
+        ppl = int(self.capacity) if ppl > self.capacity else ppl
         # 3) Отопительный сезон: 15 октября–15 апреля
         m, d = dt.month, dt.day
         heating_active = ((m == 10 and d >= 15) or (m > 10) or (m < 4) or (m == 4 and d <= 15))
@@ -50,4 +52,5 @@ class OfficeBuildingAgent(Agent):
         #     f"Heat={'on' if heating_active else 'off'}({heating_load:.0f}W), "
         #     f"Vent={ventilation_load:.0f}W, Light={lighting_load:.0f}W, "
         #     f"Plug={plug_load:.0f}W Total={self.consumption:.0f}W"
+        #     f"people in ofice: {ppl}"
         # )

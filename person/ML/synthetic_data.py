@@ -87,7 +87,7 @@ def generate_synthetic_person_params(
     df['cooking_time'] = np.clip(rng.normal(1,0.4,size=n_agents), 0.2, 3)
 
     # socialness: зависит от региона и возраста
-    base_social = 0.5 + (df['region'] == 'urban') * 0.1 - (df['age'] - 24) / 100
+    base_social = 0.5 + (df['region'] == 'urban') * 0.2 - (df['age'] - 24) / 100
     df['socialness'] = np.clip(rng.normal(base_social, 0.1, size=n_agents), 0, 1)
 
     # movie enthusiasm: зависит от tv, leisure_dur и socialness
@@ -98,10 +98,10 @@ def generate_synthetic_person_params(
 
     
     sport_loc = (
-        0.5                                       # базовый уровень
-        - (df['age'] - 24) / 150                  # с возрастом чуть меньше активности
-        + np.where(df['T_out'] > 20, 0.1, -0.1)   # жаркая погода — выше активность, холод — ниже
-        + df['socialness'] * 0.2                  # социальность подстегивает спорт
+        0.5
+        - (df['age'] - 24) / 150
+        + np.where(df['T_out'] > 20, 0.1, -0.1)
+        + df['socialness'] * 0.2
     )
     df['sport_activity'] = np.clip(
         rng.normal(loc=sport_loc, scale=0.2, size=n_agents),
@@ -118,22 +118,13 @@ def generate_synthetic_person_params(
     ).clip(0.05, 0.95)
     df['healthy'] = rng.binomial(1, base_health_prob)
 
-    # # healthy: зависит от возраста и socialness
-    # base_health_prob = (0.8 - (df['age'] - 24) / 100   # со старением вероятность падает
-    #     + df['socialness'] * 0.2   # больше socialness — выше шанс здоровья
-    #     - np.where(df['T_out'] < 0, 0.1, 0.0)  # холод повышает риск
-    # ).clip(0.05, 0.95)
-    # df['healthy'] = rng.binomial(1, base_health_prob)
-
     # hospitalized: если не здоров — выше риск, плюс старше 55 ещё выше
     hosp_prob = (0.01 + (1 - df['healthy']) * 0.4 + (df['age'] > 55) * 0.1).clip(0, 1)
     df['hospitalized'] = rng.binomial(1, hosp_prob)
 
-    # df['sport_activity'] = np.clip(rng.normal(loc = df['healthy'] * 0.6 + 0.3 - (df['age'] - 24) / 150 + np.where(df['T_out'] > 20, 0.1, -0.1), scale = 0.1, size = n_agents), 0, 1)
     # weekend_outdoor_time: зависит от socialness и weekend_relax
     df['weekend_outdoor_time'] = np.clip(rng.normal(df['socialness'] * 2 + df['weekend_relax_factor'], 0.5), 0, 6)
 
-    # Сохраняем
     df.to_csv(output_path, index=False)
     print(f"{output_path} создано: {len(df)} строк")
 

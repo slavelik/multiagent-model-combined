@@ -40,7 +40,7 @@ y_train_pred = pipeline.predict(X_train)
 y_test_pred = pipeline.predict(X_test)
 
 metrics = {
-    'model': 'XGB_Pipeline_Occupation',
+    'model': 'XGBoost',
     'accuracy_train': accuracy_score(y_train, y_train_pred),
     'accuracy_test': accuracy_score(y_test, y_test_pred),
     'precision_train': precision_score(y_train, y_train_pred, average='weighted', zero_division=0),

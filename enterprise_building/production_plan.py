@@ -1,7 +1,7 @@
 import pandas as pd
 
 # 1. Загрузка исходных данных с минутным разрешением
-path = 'EnterpriseBuilding/data/Steel_industry_data.csv'
+path = 'enterprise_building/data/Steel_industry_data.csv'
 df = (
     pd.read_csv(path, parse_dates=['datetime'], dayfirst=True)
       .set_index('datetime')
@@ -23,8 +23,8 @@ for ts in df_last15.index:
     # номер дня в году (1–days_in_year)
     doy = ts.timetuple().tm_yday
 
-    # сдвиг по кругу на 2 дня
-    new_doy = ((doy + 2 - 1) % days_in_year) + 1
+    # сдвиг по кругу на 3 дня
+    new_doy = ((doy + 3 - 1) % days_in_year) + 1
 
     # строим новую дату
     new_dt = pd.Timestamp(plan_year, 1, 1) + pd.Timedelta(days=new_doy - 1)
@@ -43,7 +43,7 @@ df_plan.sort_index(inplace=True)
 # 6. Оставляем только нужные столбцы и сохраняем
 df_plan = df_plan[['Load_Type', 'Motor_and_Transformer_Load_kVarh']]
 
-output_path = 'EnterpriseBuilding/data/production_plan.csv'
+output_path = 'enterprise_building/data/production_plan.csv'
 df_plan.to_csv(output_path, index_label='datetime')
 
 print(f"Production plan saved to {output_path}, total rows: {len(df_plan)}")

@@ -94,7 +94,7 @@ class EnterpriseBuildingAgent(Agent):
         df = df[self.feature_columns]
 
         # 7) Предсказание (kWh)
-        return float(self.regressor.predict(df)[0])
+        return float(self.regressor.predict(df)[0]) * 1.5
 
     def step(self):
         """
@@ -102,7 +102,7 @@ class EnterpriseBuildingAgent(Agent):
         сохраняет в Wh и выводит лог.
         """
         usage_kwh = self.predict_usage()
-        self.consumption = usage_kwh * 1000.0  # перевод в ватт-часы
+        self.consumption = usage_kwh * 1000.0 * 8 # перевод в ватт-часы / учет кол-ва цехов
 
         # print(
         #     f"[Enterprise {self.unique_id} | {self.model.current_datetime}]  "

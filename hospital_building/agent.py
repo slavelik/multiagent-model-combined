@@ -1,54 +1,79 @@
 from mesa import Agent
-from datetime import datetime
 
 class HospitalBuildingAgent(Agent):
     """
-    Простой агент «Больница»:
-    – Два расхода: тепло (равномерно в отопительный сезон) и электроэнергия (динамика по загруженности и операциям).
-    – Итог в self.consumption (Вт·ч) за час.
+    Агент «Больница»:
+      – self.consumption хранит итоговое энергопотребление за последний час (Вт·ч).
+      – Отопление рассчитывается по удельному годовому нормативу (СП 50).
+      – Электропотребление — базовый уровень (аудиты РФ) + динамика от загрузки койко-мест и числа пациентов.
     """
-
     # Параметры здания
-    AREA_M2       = 8000                         # площадь, м²
-    BEDS_TOTAL    = 320                          # койко-мест
-    # Удельная энергия, кВт·ч/м²·год
-    EUI_HEAT_BASE = 108.0  # СП 50: q = 0.024·ГСОП (ГСОП≈4500) → 108 кВт·ч/м²·год 
-    EUI_EL_BASE   = 65.0   # среднее по РФ-аудитам (45–80) → 65 кВт·ч/м²·год 
+    AREA_M2       = 8000    # площадь больницы, м²
+    BEDS_TOTAL    = 320     # всего коек
 
-    # Расчёт часов отопительного сезона: 15 окт–15 апр ≈ 183 дня → 183*24
-    HEAT_HOURS = 183 * 24
-    _HEAT_HOURLY_NORM = EUI_HEAT_BASE * AREA_M2 / HEAT_HOURS  # кВт·ч/ч
+    # Удельное годовое потребление тепла:
+    #   СП 50 «Требования к теплоснабжению»: qₒₚ = 0.024·ГСОП, где ГСОП≈4500 → 108 кВт·ч/м²·год
+    EUI_HEAT_BASE = 108.0   # кВт·ч/м²·год
+
+    # Удельное годовое потребление эл-энергии:
+    #   Российские энергоаудиты: 45–80 → берем среднее 65 кВт·ч/м²·год (EIA CBECS 2012)
+    EUI_EL_BASE   = 65.0    # кВт·ч/м²·год
+
+    # Часы отопительного сезона (15 окт–15 апр ≈183 дн × 24 ч)
+    HEAT_HOURS    = 183 * 24
+
+    # Часовые нормативы, кВт·ч/ч
+    _HEAT_KWH_H   = EUI_HEAT_BASE * AREA_M2 / HEAT_HOURS
+    _EL_KWH_H     = EUI_EL_BASE   * AREA_M2 / 8760.0
 
     def __init__(self, model):
         super().__init__(model)
         self.consumption = 0.0  # Вт·ч за последний час
 
     def step(self):
-        dt       = self.model.current_datetime
-        patients = getattr(self.model, 'num_unhealthy', 0)
-        occ      = (patients + min(self.model.num_hospitalized, self.BEDS_TOTAL)) / self.BEDS_TOTAL
+        dt = self.model.current_datetime
 
-        # 1) Тепло: только в отопительный сезон, равномерно
-        if  (dt.month == 10 and dt.day >= 15) or (11 <= dt.month <= 12) \
-          or (1 <= dt.month <= 3) or (dt.month == 4 and dt.day <= 15):
-            heat_kWh = self._HEAT_HOURLY_NORM
-        else:
-            heat_kWh = 0.0
+        # --- Загрузка койко-мест и пациентов ---
+        # occ_ratio = доля занятых коек
+        hospitalized = self.model.num_hospitalized
+        occ_ratio    = hospitalized / self.BEDS_TOTAL
 
-        # 2) Электричество: базовый часовой уровень
-        base_el = self.EUI_EL_BASE * self.AREA_M2 / 8760.0  # кВт·ч/ч
+        # pat_ratio = доля «активных» больных (операции, диагностика)
+        patients     = self.model.num_unhealthy
+        pat_ratio    = min(patients, self.BEDS_TOTAL) / self.BEDS_TOTAL
 
-        #    – occupancy влияет на вентиляцию+охлаждение+освещение ≈56 % электропотребления
-        #    – операции/оборудование — около 20 % электропотребления
-        dynamic_factor = 1 + 0.56 * occ
+        # --- Отопление ---
+        month, day = dt.month, dt.day
+        in_heat = (
+            (month == 10 and day >= 15) or
+            (11 <= month <= 12) or
+            (1 <= month <= 3) or
+            (month == 4 and day <= 15)
+        )
+        # равномерно по всем часам сезона → _HEAT_KWH_H
+        heat_kWh = self._HEAT_KWH_H if in_heat else 0.0
+
+        # --- Электропотребление базовое ---
+        base_el = self._EL_KWH_H
+
+        # --- Динамические коэффициенты ---
+        # 1) ОВиК + освещение: ~56 % от общего электропотребления больницы
+        #    (EIA CBECS 2012, см. HVAC share ≈55–60 %)
+        #    → нагрузка пропорциональна ocuppancy (occ_ratio)
+        # 2) Медоборудование и операции: ~20 % от электропотребления
+        #    (ISO EPIA, мед.ингредиенты) → пропорц. числу пациентов (pat_ratio)
+        dynamic_factor = 1.0 + 0.56 * occ_ratio + 0.20 * pat_ratio
 
         el_kWh = base_el * dynamic_factor
 
-        # Сохраняем итог Вт·ч
-        total_kWh       = heat_kWh + el_kWh
-        self.consumption = total_kWh * 1000
+        # --- Итог и перевод в Вт·ч ---
+        total_kWh        = heat_kWh + el_kWh
+        self.consumption = total_kWh * 1000.0
 
-        # print(f"[Hospital {self.unique_id} {dt:%Y-%m-%d %H}] "
-        #       f"occ={occ:.2f}  patients={patients:.2f}  "
-        #       f"heat={heat_kWh:.1f}kWh  el={el_kWh:.1f}kWh")
-
+        # подробный лог (для отладки)
+        # print(
+        #     f"[Hospital {self.unique_id} | {dt:%Y-%m-%d %H}] "
+        #     f"occ={occ_ratio:.2f}  pat={patients}  "
+        #     f"heat={heat_kWh:.2f}kWh  el={el_kWh:.2f}kWh  "
+        #     f"total={total_kWh:.2f}kWh"
+        # )

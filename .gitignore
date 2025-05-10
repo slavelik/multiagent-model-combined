@@ -11,7 +11,6 @@ simulations_results/simulation_results.csv
 person/senior/ML/senior_test_features.csv
 person/ML/person_test_features.csv
 person/ML/synthetic_person_features.csv
-person/ML/trained_models/
 charts/
 datasets/
 person/student/ML/student_test_features.csv
@@ -45,3 +44,5 @@ plots.py
 simulation
 feature_importance_healthy.png
 feature_importance_occupation.png
+person/ML/trained_models/
+feature_importance_socialness.png

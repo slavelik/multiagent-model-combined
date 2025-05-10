@@ -75,8 +75,8 @@ class ElectricCarAgent(Agent):
 
     def step(self):
         self.compute_hourly_consumption()
-        print(
-            f"[E-Car {self.agent_id}] hour={self.model.current_hour} | "
-            f"state={self.hourly_states[self.model.current_hour]} | "
-            f"cons={self.consumption:.1f} Wh"
-        )
+        # print(
+        #     f"[E-Car {self.agent_id}] hour={self.model.current_hour} | "
+        #     f"state={self.hourly_states[self.model.current_hour]} | "
+        #     f"cons={self.consumption:.1f} Wh"
+        # )

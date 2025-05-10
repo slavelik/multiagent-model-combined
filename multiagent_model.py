@@ -109,6 +109,7 @@ class MultiAgentModel(Model):
         self.num_home            = 0     # сколько сейчас дома
         self._last_hour          = None  # для сброса раз в час
         self.num_office_agents   = n_offices
+        self.num_people_agents   = n_persons + n_students + n_seniors
         self.total_consumption   = 0
         self.hourly_at_home      = 0
 
@@ -168,7 +169,6 @@ class MultiAgentModel(Model):
         )
 
     def step(self):
-        print("Дата:", self.current_datetime)
         row = self.feature_df.iloc[self.step_count % self.feature_len]
         self.current_datetime    = row["datetime"]
         self.current_hour        = int(row["hour"])
@@ -176,6 +176,8 @@ class MultiAgentModel(Model):
         self.current_month       = int(row["month"])
         self.is_holiday          = bool(row["day_off"])
         self.current_T_out       = float(row["T_out"])
+
+
 
         # Сброс параметров раз в день
         current_date = self.current_datetime.date()
@@ -213,6 +215,7 @@ class MultiAgentModel(Model):
         self.hourly_avg_home = self.hourly_at_home / self.num_home
         self.total_consumption = sum(a.consumption for a in self.population) + sum(a.consumption for a in self.agents_buildings)
         self.datacollector.collect(self)
+        print("Дата:", self.current_datetime)
 
     def batch_predict_seniors(self):
         if not self.by_type.get('senior') or len(self.by_type['senior']) == 0:
@@ -299,7 +302,7 @@ class MultiAgentModel(Model):
 
         results = {}
         for param, md in PersonAgent.models.items():
-            if param in ["occupation_pipeline", "occupation_encoder", "healthy_pipeline", "healthy_encoder"]:
+            if param in ["occupation_pipeline", "occupation_encoder", "healthy_pipeline", "healthy_encoder", "socialness_pipeline", "socialness_encoder"]:
                 continue
             feats = PersonAgent.FEATURES[param]
             for f in feats:
@@ -324,6 +327,11 @@ class MultiAgentModel(Model):
         hl_feats = PersonAgent.FEATURES["healthy"]
         hl_pred_raw = healthy_pipe.predict(df_hl[hl_feats])
         results["healthy"] = healthy_le.inverse_transform(hl_pred_raw)
+
+        soc_pipe = PersonAgent.models["socialness_pipeline"]
+        soc_feats = PersonAgent.FEATURES["socialness"]
+        soc_le = PersonAgent.models["socialness_encoder"]
+        results["socialness"]  = soc_pipe.predict(df0[soc_feats])
 
         for agent in self.by_type['person']:
             aid = agent.agent_id

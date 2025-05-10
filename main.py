@@ -5,6 +5,7 @@ import time
 import cProfile, pstats
 
 
+
 start = time.time()
 
 student_feature_file       = r"person\student\ML\student_test_features.csv"
@@ -24,19 +25,31 @@ global_features_file       = r"data\environment_data.csv"
 # n_evs      = round(N * pct_evs)
 # n_persons  = N - (n_students + n_seniors + n_evs)
 
-num_days   = 180
+num_days   = 365
 start_date = pd.Timestamp("2021-01-01")
 
-n_persons            = 60
-n_students           = 60
-n_seniors            = 60
-n_evs                = 0
-n_enterprises        = 0
-n_offices            = 0
-n_hospitals          = 0
-n_malls              = 0
-n_modern_residential = 0
-n_residential        = 0
+# n_persons            = 31000
+# n_students           = 8000
+# n_seniors            = 12000
+# n_evs                = 120
+# n_enterprises        = 12
+# n_offices            = 39
+# n_hospitals          = 1
+# n_malls              = 1
+# n_modern_residential = 50
+# n_residential        = 210
+
+
+n_persons            = 10800
+n_students           = 1900
+n_seniors            = 3200
+n_evs                = 80
+n_enterprises        = 1
+n_offices            = 25
+n_hospitals          = 1
+n_malls              = 1
+n_modern_residential = 26
+n_residential        = 63
 
 model = MultiAgentModel(
     n_persons=n_persons,
@@ -65,8 +78,17 @@ total_agents = (n_persons + n_students + n_seniors + n_evs
 profiler = cProfile.Profile()
 profiler.enable()
 
-for day in range(num_days*24):
-    model.step()
+start = time.time()
+
+for day in range(num_days):
+    for hour in range(24):
+        model.step()
+    time_spent = time.time() - start
+    mean_day_time = time_spent / (day + 1)
+    print(f"--- Информация по шагам моделирования: времени прошло (мин):" 
+          f"{round((time_spent / 60), 2)};  осталось (мин):" 
+          f"{round(((num_days - day - 1) * mean_day_time / 60), 2)} ---")
+
 profiler.disable()
 with open('profile_stats.txt', 'w') as f:
     stats = pstats.Stats(profiler, stream=f)
