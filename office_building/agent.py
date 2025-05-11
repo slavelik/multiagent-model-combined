@@ -2,55 +2,66 @@ import numpy as np
 from mesa import Agent
 
 class OfficeBuildingAgent(Agent):
+    """
+    Электропотребление офисного здания:
+      • цирк. насосы отопления (0,05 Вт/м², только в сезон)
+      • вентиляция (1 Вт/м² днём, 30 % ночью)
+      • освещение (10 Вт/м² днём, 1 Вт/м² ночью)
+      • розеточная нагрузка ПК (150 Вт на сотрудника)
+    """
+
+    # ── удельные мощности ────────────────────────────────────────────────
+    HEATING_PUMP_DENS = 0.05   # кВт → 50 Вт/м²? Actually W/m^2; but descending. (units should be W/m²)
+    VENT_FAN_DENS     = 1.0
+    LIGHT_DAY_DENS    = 10.0
+    LIGHT_NIGHT_DENS  = 1.0
+    PC_LOAD_W         = 150.0
+
+    # ── отопительный сезон ──────────────────────────────────────────────
+    HEAT_START = (10, 15)   # 15 октября
+    HEAT_STOP  = (4, 15)    # 15 апреля
+
     def __init__(self, model):
         super().__init__(model)
         rng = np.random.RandomState(200 + self.unique_id)
 
-        # Фиксированная площадь офиса (м²)
-        # Норма на одного: 6.5 м²/чел (СНиП)
-        self.area = float(rng.choice([500, 1000, 2000, 5000], p=[0.3,0.4,0.2,0.1]))
-        self.capacity = self.area / 6.5  # вместимость в чел
+        # Площадь и вместимость
+        self.area     = float(rng.choice([500, 1000, 2000, 5000],
+                                         p=[0.3, 0.4, 0.2, 0.1]))
+        self.capacity = self.area / 6.5
 
-        # Базовые удельные плотности (W/m²)
-        self.heating_pump_density   = 0.05   # циркуляционный насос отопления
-        self.heating_thermal_density = 22.8
-        self.vent_fan_density       = 1.0    # вентиляционные вентиляторы 
-        self.lighting_day_density   = 10.0   # офисное освещение днём 
-        self.lighting_night_density = 1.0  # аварийное/безопасное освещение ночью
-        self.per_pc_load            = 150.0  # W на ПК в рабочее время 
+        self.consumption = 0.0   # Wh за текущий час
 
-        self.consumption = 0
+    # ---------- служебные ----------
+    @staticmethod
+    def _in_heating_season(dt) -> bool:
+        m, d = dt.month, dt.day
+        return (
+            (m > 10) or (m == 10 and d >= 15) or
+            (m < 4)  or (m == 4  and d <= 15)
+        )
 
+    # ---------- основной шаг ----------
     def step(self):
-        dt = self.model.current_datetime
+        dt   = self.model.current_datetime
         hour = dt.hour
 
-        # 2) Определяем ppl
-        ppl = int(self.model.num_at_office / self.model.num_office_agents)
-        ppl = int(self.capacity) if ppl > self.capacity else ppl
-        # 3) Отопительный сезон: 15 октября–15 апреля
-        m, d = dt.month, dt.day
-        heating_active = ((m == 10 and d >= 15) or (m > 10) or (m < 4) or (m == 4 and d <= 15))
-        heating_load = self.area * self.heating_pump_density if heating_active else 0.0
+        # 1) численность сотрудников
+        ppl_now = int(self.model.num_at_office / self.model.num_office_agents)
+        ppl     = min(ppl_now, int(self.capacity))
 
-        # 4) Ночная переработка (22:00–7:00) – потребление падает
-        night = True if (hour >= 22 or hour < 7) else False
-        vent_factor = 0.3 if night else 1.0   # 30% мощности вентиляторов ночью
-        light_density = self.lighting_night_density if night else self.lighting_day_density
+        # 2) насосы отопления
+        pump_load = self.area * self.HEATING_PUMP_DENS if self._in_heating_season(dt) else 0.0
 
+        # 3) ночные коэффициенты
+        night       = (hour >= 22 or hour < 7)
+        vent_factor = 0.3 if night else 1.0
+        light_dens  = self.LIGHT_NIGHT_DENS if night else self.LIGHT_DAY_DENS
 
-        # 5) Расчёт нагрузок
-        ventilation_load = self.area * self.vent_fan_density * vent_factor
-        lighting_load    = self.area * light_density
-        plug_load        = ppl * self.per_pc_load
+        # 4) расчёт нагрузок (Вт)
+        ventilation = self.area * self.VENT_FAN_DENS * vent_factor
+        lighting    = self.area * light_dens
+        plug_load   = ppl * self.PC_LOAD_W
 
-        # 6) Суммарная мгновенная мощность (W)
-        self.consumption = heating_load + ventilation_load + lighting_load + plug_load
-
-        # print(
-        #     f"[Office {self.unique_id} | {dt}] "
-        #     f"Heat={'on' if heating_active else 'off'}({heating_load:.0f}W), "
-        #     f"Vent={ventilation_load:.0f}W, Light={lighting_load:.0f}W, "
-        #     f"Plug={plug_load:.0f}W Total={self.consumption:.0f}W"
-        #     f"people in ofice: {ppl}"
-        # )
+        # 5) итог (Вт → Wh за час)
+        self.consumption = (pump_load + ventilation + lighting + plug_load)

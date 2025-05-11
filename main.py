@@ -10,15 +10,8 @@ from agent_data_generators import (
     generate_ev_test_features
 )
 
-
-
-
 start = time.time()
 
-# student_feature_file       = r"person\student\ML\student_test_features.csv"
-# senior_feature_file        = r"person\senior\ML\senior_test_features.csv"
-# person_feature_file        = r"person\ML\person_test_features.csv"
-# evs_feature_file           = r"transport\ev\ML\ev_test_features.csv"
 correction_factors_file    = r"economy\correction_factors.pkl"
 global_features_file       = r"data\environment_data.csv"
 
@@ -32,44 +25,42 @@ global_features_file       = r"data\environment_data.csv"
 # n_evs      = round(N * pct_evs)
 # n_persons  = N - (n_students + n_seniors + n_evs)
 
-num_days   = 365
+num_days   = 31
 start_date = pd.Timestamp("2021-01-01")
 
-# n_persons            = 31000
-# n_students           = 8000
-# n_seniors            = 12000
-# n_evs                = 120
-# n_enterprises        = 12
-# n_offices            = 39
-# n_hospitals          = 1
-# n_malls              = 1
-# n_modern_residential = 50
-# n_residential        = 210
-
-
-n_persons            = 10800
-n_students           = 1900
-n_seniors            = 3200
-n_evs                = 80
+n_persons            = 400
+n_students           = 190
+n_seniors            = 320
+n_evs                = 1
 n_enterprises        = 1
-n_offices            = 25
+n_offices            = 2
 n_hospitals          = 1
 n_malls              = 1
-n_modern_residential = 26
-n_residential        = 63
+n_modern_residential = 2
+n_residential        = 2
+
+# n_persons            = 10800
+# n_students           = 1900
+# n_seniors            = 3200
+# n_evs                = 80
+# n_enterprises        = 1
+# n_offices            = 25
+# n_hospitals          = 1
+# n_malls              = 1
+# n_modern_residential = 26
+# n_residential        = 63
 
 senior_df = generate_senior_test_features(num_days, n_seniors)
 student_df = generate_student_test_features(num_days, n_students)
 person_df = generate_person_test_features(num_days, n_persons)
 ev_df = generate_ev_test_features(num_days, n_evs)
-
+print("Данные сгенерированы")
 
 model = MultiAgentModel(
     n_persons=n_persons,
     n_students=n_students,
     n_seniors=n_seniors,
     n_evs=n_evs,
-    n_days=num_days,
     n_enterprises=n_enterprises,
     n_offices=n_offices,
     n_hospitals=n_hospitals,
@@ -77,10 +68,10 @@ model = MultiAgentModel(
     n_modern_residential=n_modern_residential,
     n_residential=n_residential,
     global_features_file=global_features_file,
-    senior_test_file=senior_df,
-    student_test_file=student_df,
-    person_test_file=person_df,
-    evs_test_file=ev_df,
+    senior_test_feat=senior_df,
+    student_test_feat=student_df,
+    person_test_feat=person_df,
+    evs_test_feat=ev_df,
     correction_factors_file=correction_factors_file,
     seed=42
 )
@@ -92,7 +83,6 @@ profiler = cProfile.Profile()
 profiler.enable()
 
 start = time.time()
-
 for day in range(num_days):
     for hour in range(24):
         model.step()

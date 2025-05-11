@@ -1,78 +1,71 @@
-"""
-Reference block
----------------
-reference: 17-storey “П-44ТМ”, 2015
-17 floors · 2 entrances · 136 flats · ≈ 310 residents  СП 54.13330-2016
-3 gearless regen lifts · LED + PIR corridor lights · EC exhaust fans
-VFD circulation pumps · full IP-BMS
-
-Constants (average kW):
-LIGHT_STANDBY  0.80   # 10 % of 8 kW full corridor load
-LIGHT_DELTA    2.20   # additional when Δpresence = 1
-FAN_KW         0.50   # 2 × EC fan 250 W
-IT_KW          0.20
-PUMP_KW        0.15   # 2 VFD pumps @ 75 W (winter)
-ELEV_TRIP_KWH  0.06   # KONE MonoSpace DX, ISO A-class
-FULL_PRES_TR   180    # ISO 25745 cat-3
-"""
-
 import datetime as _dt
 from mesa import Agent
 
 class ModernResidentialBuildingAgent(Agent):
-    LIGHT_STBY_KW = 0.80
-    LIGHT_DELTA_KW = 2.20
-    FAN_KW   = 0.50
-    IT_KW    = 0.20
-    PUMP_KW  = 0.15
-    ELEV_TRIP_KWH = 0.06
-    FULL_PRES_TRIPS = 180
-    HEATING_DENSITY_W_PER_M2 = 22.8  # Вт/м² в отопительный сезон
-    HEAT_AREA_M2             = 7500  # отапливаемая площадь здания в м² (брутто по проекту)
-    HEAT_START, HEAT_STOP = (10,15), (4,15)
+    """
+    Современный 17-этажный дом (серия П-44ТМ),  310 жителей.
+    Учитываются электрические нагрузки:
+      • коридорное освещение (LED + PIR);            LIGHT_STBY_KW + LIGHT_DELTA_KW·Δpresence
+      • вытяжные вентиляторы (EC);                   FAN_KW
+      • ИТ-система, лифтовой БМС;                    IT_KW
+      • циркуляционные насосы (VFD);                 PUMP_KW (только отопительный сезон)
+      • лифты (рег-привод, реген.);                  trips·ELEV_TRIP_KWH
+    """
+
+    # ── удельные мощности, кВт ───────────────────────────────────────────
+    LIGHT_STBY_KW   = 0.80         # дежурное освещение
+    LIGHT_DELTA_KW  = 2.20         # добавка при Δpresence = 1
+    FAN_KW          = 0.50
+    IT_KW           = 0.20
+    PUMP_KW         = 0.15         # 2 × 75 Вт
+
+    # ── лифты ────────────────────────────────────────────────────────────
+    ELEV_TRIP_KWH   = 0.06         # энергозатраты на поездку
+    FULL_PRES_TRIPS = 180          # поездок при Δpresence = 1
+
+    # ── отопительный сезон: 15 окт – 15 апр ─────────────────────────────
+    HEAT_START = (10, 15)
+    HEAT_STOP  = (4, 15)
 
     def __init__(self, model):
         super().__init__(model)
-        self._last_p: float | None = None
-        self.consumption = 0.0  # Wh
+        self._last_presence: float | None = None   # доля жителей «дома» час назад
+        self.consumption = 0.0                     # Wh за текущий час
 
-    def _heating(self, dt: _dt.datetime):
-        m_d = (dt.month, dt.day)
-        return (m_d >= ModernResidentialBuildingAgent.HEAT_START) or (
-               m_d <= ModernResidentialBuildingAgent.HEAT_STOP)
+    # ---------- вспомогательные ----------
+    @staticmethod
+    def _in_heating_season(dt: _dt.datetime) -> bool:
+        m, d = dt.month, dt.day
+        return (
+            (m > 10) or (m == 10 and d >= 15) or
+            (m < 4)  or (m == 4  and d <= 15)
+        )
 
-
-    def _lift_kw(self, p_now):
-        if self._last_p is None or self.model.current_datetime.hour == 23 or self.model.current_datetime.hour < 4:
-            self._last_p = p_now
+    def _lift_energy_kwh(self, pres_now: float) -> float:
+        """Расход лифтов за час, кВт·ч."""
+        h = self.model.current_datetime.hour
+        if self._last_presence is None or 0 <= h < 4 or h == 23:
+            self._last_presence = pres_now
             return 0.0
-        trips = abs(p_now - self._last_p) * self.FULL_PRES_TRIPS
-        self._last_p = p_now
+
+        trips = abs(pres_now - self._last_presence) * self.FULL_PRES_TRIPS
+        self._last_presence = pres_now
         return trips * self.ELEV_TRIP_KWH
 
-
-    def _light_kw(self, delta_p):
-        return self.LIGHT_STBY_KW + self.LIGHT_DELTA_KW * delta_p
-
-
+    # ---------- главный шаг ----------
     def step(self):
-        dt = self.model.current_datetime
-        prs = self.model.num_home / self.model.num_people_agents
-        dprs = 1 if self._last_p is None else abs(prs - self._last_p)
+        dt   = self.model.current_datetime
+        pres = self.model.num_home / self.model.num_people_agents
 
-        heating_on = self._heating(dt)
-        heating_kw = (self.HEAT_AREA_M2 * self.HEATING_DENSITY_W_PER_M2 / 1000.0) if heating_on else 0.0
+        # 1) фиксированные и сезонные нагрузки (кВт)
+        kw_fixed = self.FAN_KW + self.IT_KW + self.LIGHT_STBY_KW
+        kw_pump  = self.PUMP_KW if self._in_heating_season(dt) else 0.0
 
-        # Электрическая нагрузка (кВт)
-        kw_elec = (
-            self._light_kw(dprs)
-            + self.FAN_KW
-            + self.IT_KW
-            + (self.PUMP_KW if heating_on else 0.0)
-            + self._lift_kw(prs)
-        )
-        # Суммарная мощность: электрическая + тепловая (кВт)
-        kw = kw_elec + heating_kw
-        self.consumption = kw * 1000.0
-        # print(f"[Modern {self.unique_id} {dt:%F %H}] pres={prs:.2f} "
-        #         f"Δp={dprs:.2f} load={kw:.2f} kW")
+        # 2) динамика освещения (Δpresence) и лифтов
+        delta_p  = 1.0 if self._last_presence is None else abs(pres - self._last_presence)
+        kw_light = self.LIGHT_DELTA_KW * delta_p
+        kw_lifts = self._lift_energy_kwh(pres)
+
+        # 3) итоговая мощность → потребление за час (Вт·ч)
+        kw_total         = kw_fixed + kw_pump + kw_light + kw_lifts
+        self.consumption = kw_total * 1_000

@@ -53,7 +53,7 @@ def plot_comparison(results, output_dir):
     plt.ylabel('RMSE')
     plt.title('Model RMSE Comparison')
     plt.tight_layout()
-    plt.savefig(os.path.join('MallBuilding', 'trained_models', 'plots', 'model_rmse_comparison.png'))
+    plt.savefig(os.path.join('mall_building', 'trained_models', 'plots', 'model_rmse_comparison.png'))
     plt.show()
 
 
@@ -67,15 +67,15 @@ def plot_best_scatter(best, X_te, y_te, output_dir):
     plt.ylabel('Predicted occupancy_rate')
     plt.title(f"True vs Predicted ({best['name']})")
     plt.tight_layout()
-    plt.savefig(os.path.join('MallBuilding', 'trained_models', 'plots', 'best_model_scatter.png'))
+    plt.savefig(os.path.join('mall_building', 'trained_models', 'plots', 'best_model_scatter.png'))
     plt.show()
 
 
 def train_mall_models():
     # Пути
     base = os.getcwd()
-    data_path = os.path.join(base, 'MallBuilding', 'data', 'mall_traffic_synthetic.csv')
-    model_path = os.path.join(base, 'MallBuilding', 'trained_models', 'best_mall_model.pkl')
+    data_path = os.path.join(base, 'mall_building', 'data', 'mall_traffic_synthetic.csv')
+    model_path = os.path.join(base, 'mall_building', 'trained_models', 'best_mall_model.pkl')
     # Папка для графиков
     plots_dir = 'plots'
 
@@ -123,3 +123,5 @@ def train_mall_models():
     # Визуализация
     plot_comparison(results, plots_dir)
     plot_best_scatter(best, X_test, y_test, plots_dir)
+
+train_mall_models()

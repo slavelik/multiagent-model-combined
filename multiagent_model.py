@@ -41,7 +41,6 @@ class MultiAgentModel(Model):
         n_malls: int,
         n_modern_residential: int,
         n_residential: int,
-        n_days: int,
         senior_test_feat: str,
         student_test_feat: str,
         person_test_feat: str,
@@ -49,7 +48,6 @@ class MultiAgentModel(Model):
         correction_factors_file: str,
         global_features_file: int,
         seed=None,
-        hours_per_day: int = 24
     ):
         super().__init__(seed=seed)
 
@@ -58,41 +56,10 @@ class MultiAgentModel(Model):
         self.feature_len = len(self.feature_df)
         self.step_count = 0
 
-        # # 2) генерация фич для каждого типа агентов
-        # generate_senior_test_features(
-        #     n_days=n_days,
-        #     hours_per_day=hours_per_day,
-        #     num_seniors=n_seniors,
-        #     seed=seed or 42,
-        #     output_path=senior_test_file
-        # )
-        # generate_student_test_features(
-        #     n_days=n_days,
-        #     hours_per_day=hours_per_day,
-        #     num_students=n_students,
-        #     seed=seed or 42,
-        #     output_path=student_test_file
-        # )
-        # generate_person_features(
-        #     n_days=n_days,
-        #     hours_per_day=hours_per_day,
-        #     num_persons=n_persons,
-        #     seed=seed or 42,
-        #     output_path=person_test_file
-        # )
-        # generate_ev_test_features(
-        #     n_days=n_days,
-        #     hours_per_day=hours_per_day,
-        #     num_evs=n_evs,
-        #     seed=seed or 42,
-        #     output_path=evs_test_file
-        # )
-
         self.senior_test_features = senior_test_feat
         self.student_test_features = student_test_feat
         self.person_test_features = person_test_feat
         self.ev_test_features = evs_test_feat
-
 
         # 3) инициируем глобальные
         print("Инициализация глобальных переменных.")
@@ -157,8 +124,8 @@ class MultiAgentModel(Model):
                 "Date": lambda m: m.current_datetime,
                 "Hour": lambda m: m.current_hour,
                 "Total Consumption": lambda m: m.total_consumption,
-                "hospitalized": lambda m: m.num_hospitalized,
-                "patients_total": lambda m: m.num_unhealthy,
+                "hospitalized": lambda m: int(m.num_hospitalized / 20),
+                "patients_total": lambda m: int(m.num_unhealthy / 20),
                 "office_population": lambda m: m.num_at_office,
                 "presence_in_building": lambda m: m.num_home,
                 "hourly_at_home": lambda m: m.hourly_avg_home
@@ -177,8 +144,6 @@ class MultiAgentModel(Model):
         self.current_month       = int(row["month"])
         self.is_holiday          = bool(row["day_off"])
         self.current_T_out       = float(row["T_out"])
-
-
 
         # Сброс параметров раз в день
         current_date = self.current_datetime.date()
@@ -331,7 +296,6 @@ class MultiAgentModel(Model):
 
         soc_pipe = PersonAgent.models["socialness_pipeline"]
         soc_feats = PersonAgent.FEATURES["socialness"]
-        soc_le = PersonAgent.models["socialness_encoder"]
         results["socialness"]  = soc_pipe.predict(df0[soc_feats])
 
         for agent in self.by_type['person']:
